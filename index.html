@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Coach Copilot V1.1</title>
+<title>Coach Copilot V3</title>
 <style>
 :root{--bg:#f3f4f6;--card:#fff;--text:#111827;--muted:#6b7280;--border:#d1d5db}
 *{box-sizing:border-box}body{margin:0;font-family:Arial,Helvetica,sans-serif;background:var(--bg);color:var(--text)}
@@ -18,22 +18,32 @@ label{display:block;margin:9px 0}label input,label textarea,label select{display
 .setrow{display:grid;grid-template-columns:40px 1fr 1fr 1fr 38px;gap:5px;align-items:center;margin:5px 0}
 .header{font-size:12px;color:var(--muted)}.client,.history{border-top:1px solid #e5e7eb;padding:10px 0}
 h1,h2,h3{margin:4px 0}@media(min-width:650px){.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}}
-</style>
 
+#authGate{position:fixed;inset:0;background:#f3f4f6;z-index:1000;display:flex;align-items:center;justify-content:center;padding:18px}
+#authGate.hidden{display:none}.authCard{width:min(420px,100%);background:white;border:1px solid var(--border);border-radius:16px;padding:20px}.authCard input{width:100%;margin:5px 0 12px}.authError{color:#b91c1c;margin-top:10px}.accountBtn{margin-left:8px;padding:6px 9px}
+</style>
 <link rel="manifest" href="./manifest.webmanifest">
 <meta name="theme-color" content="#111827">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="default">
-<meta name="apple-mobile-web-app-title" content="Coach Copilot">
 <link rel="apple-touch-icon" href="./icons/icon-192.png">
-
 </head>
 <body>
+<div id="authGate">
+ <div class="authCard">
+  <h2>Coach Copilot</h2>
+  <p class="muted">Sign in to your Coach Copilot account.</p>
+  <label>Email<input id="loginEmail" type="email" autocomplete="email"></label>
+  <label>Password<input id="loginPassword" type="password" autocomplete="current-password"></label>
+  <button id="loginButton" class="primary" style="width:100%">Sign in</button>
+  <div id="authError" class="authError"></div>
+ </div>
+</div>
 <div class="app">
  <div class="top">
-  <div><h1>Coach Copilot</h1><div class="muted">V1.1 prototype</div></div>
-  <div><button id="coachBtn" class="active">Coach</button><button id="clientBtn">Client</button></div>
+  <div><h1>Coach Copilot</h1><div class="muted">V3 cloud preview</div></div>
+  <div id="accountBar" class="muted"></div>
  </div>
+ <div style="display:none"><button id="coachBtn"></button><button id="clientBtn"></button></div>
  <div class="tabs card">
   <button class="tab active" data-v="clients">Clients</button>
   <button class="tab" data-v="programme">Programme</button>
@@ -189,9 +199,15 @@ h1,h2,h3{margin:4px 0}@media(min-width:650px){.grid{display:grid;grid-template-c
  </div>
 </section>
 </div>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
 (function(){
 "use strict";
+var SUPABASE_URL="https://ysalexpeiynndagqufpl.supabase.co";
+var SUPABASE_PUBLISHABLE_KEY="sb_publishable_hzOjhsD7DYoQy2g9Jg1ufA_T8MBs9im";
+var sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_PUBLISHABLE_KEY);
+var authProfile=null;
+
 function uid(){return "id_"+Date.now()+"_"+Math.floor(Math.random()*1000000);}
 var KEY="coach_copilot_v13";
 var state;
@@ -855,18 +871,41 @@ function renderHistory(){
 }
 
 function render(){renderRole();renderClients();renderProgramme();renderWorkout();renderHistory()}
-ensureClientData(client());save();render();
+
+async function loadAuthenticatedProfile(user){
+ var result=await sb.from("profiles").select("id,display_name,role").eq("id",user.id).single();
+ if(result.error) throw result.error;
+ authProfile=result.data;
+ state.role=authProfile.role;
+ save();
+ var bar=el("accountBar");
+ bar.innerHTML=esc(authProfile.display_name||user.email)+" · "+esc(authProfile.role)+" <button id='signOutButton' class='accountBtn'>Sign out</button>";
+ el("signOutButton").onclick=async function(){await sb.auth.signOut();location.reload();};
+ el("authGate").classList.add("hidden");
+ ensureClientData(client());save();render();
+}
+
+async function bootAuth(){
+ try{
+  var sess=await sb.auth.getSession();
+  if(sess.data.session){await loadAuthenticatedProfile(sess.data.session.user);}
+ }catch(err){el("authError").textContent=err.message||String(err);}
+}
+
+el("loginButton").onclick=async function(){
+ el("authError").textContent="";
+ var email=el("loginEmail").value.trim(), password=el("loginPassword").value;
+ if(!email||!password){el("authError").textContent="Enter your email and password.";return;}
+ el("loginButton").disabled=true; el("loginButton").textContent="Signing in…";
+ var result=await sb.auth.signInWithPassword({email:email,password:password});
+ if(result.error){el("authError").textContent=result.error.message;el("loginButton").disabled=false;el("loginButton").textContent="Sign in";return;}
+ try{await loadAuthenticatedProfile(result.data.user);}catch(err){el("authError").textContent=err.message||String(err);}
+ el("loginButton").disabled=false;el("loginButton").textContent="Sign in";
+};
+
+el("loginPassword").addEventListener("keydown",function(e){if(e.key==="Enter")el("loginButton").click();});
+bootAuth();
 })();
 </script>
-
-<script>
-if ("serviceWorker" in navigator) {
-  window.addEventListener("load", function() {
-    navigator.serviceWorker.register("./service-worker.js").catch(function(err) {
-      console.log("Service worker registration failed:", err);
-    });
-  });
-}
-</script>
-
+<script>if("serviceWorker" in navigator){window.addEventListener("load",()=>navigator.serviceWorker.register("./service-worker.js"));}</script>
 </body></html>
