@@ -1,8 +1,22 @@
-# Coach Copilot V3.0 cloud preview
+# Coach Copilot V3.1 — cloud programme delivery
 
-Adds real Supabase authentication and role detection to the existing PWA.
+This build moves coach→client programme delivery to Supabase.
 
-## Important
-Programme/workout records are still using the existing localStorage engine in this transition build. Do not use this build as proof of cross-device sync yet. The next migration moves programme/workout reads and writes to the Supabase tables already created.
+Cloud-backed now:
+- Supabase authentication and profile role
+- coach/client relationships
+- programmes
+- weeks
+- sessions
+- exercises
+- individual prescribed sets
 
-The Supabase publishable key in `index.html` is intentionally client-side. Never add a secret/service-role key to this repository.
+Still to migrate in the next build:
+- workout completion/results
+- session feedback
+- history/PR/adherence
+
+## Test goal
+Link one dummy client to Mark in `coach_clients`, create a programme as Mark, then sign in as the dummy client and confirm the prescription is visible read-only.
+
+The Supabase publishable key is intentionally client-side. Never add a service-role/secret key to this repository.
