@@ -1,9 +1,0 @@
-# OS/editor files
-.DS_Store
-Thumbs.db
-.vscode/
-.idea/
-
-# Local environment files
-.env
-.env.*
