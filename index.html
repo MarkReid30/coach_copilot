@@ -1,7 +1,7 @@
-<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#111827"><link rel="manifest" href="./manifest.webmanifest"><title>Coach Copilot V3.4.2</title><style>
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#111827"><link rel="manifest" href="./manifest.webmanifest"><title>Coach Copilot V3.4.3</title><style>
 :root{--bg:#f3f4f6;--card:#fff;--text:#111827;--muted:#6b7280;--border:#d1d5db}*{box-sizing:border-box}body{margin:0;font-family:Arial,sans-serif;background:var(--bg);color:var(--text)}.app{max-width:900px;margin:auto;padding:12px}.top,.row{display:flex;gap:10px;align-items:center}.top,.spread{justify-content:space-between}.card{background:#fff;border:1px solid var(--border);border-radius:14px;padding:14px;margin:12px 0}button,input,select,textarea{font:inherit;border:1px solid var(--border);border-radius:9px;padding:9px;background:#fff}button{cursor:pointer}.primary,.active{background:#111827;color:#fff}.danger{color:#b91c1c}.tabs{display:flex;gap:6px;overflow:auto}.view{display:none}.view.activeView{display:block}.muted{color:var(--muted)}.hidden{display:none!important}label{display:block;margin:9px 0}label input,label textarea,label select{display:block;width:100%;margin-top:4px}.exercise{border:1px solid var(--border);border-radius:12px;padding:10px;margin:10px 0}.setrow{display:grid;grid-template-columns:40px 1fr 1fr 1fr 38px;gap:5px;align-items:center;margin:5px 0}.setrow input{width:100%;min-width:0}.header{font-size:12px;color:var(--muted)}.history{border-top:1px solid #e5e7eb;padding:10px 0}.badge{display:inline-block;padding:3px 7px;border:1px solid #111827;border-radius:999px;font-size:12px}.err{color:#b91c1c}h1,h2,h3{margin:4px 0}.quickbuild{border:2px solid #111827}.quickbuild textarea{min-height:210px;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;line-height:1.45}.quickHelp{font-size:13px;line-height:1.45}.draftSession{border:1px solid var(--border);border-radius:12px;padding:10px;margin:10px 0}.draftExercise{border-left:3px solid #d1d5db;padding:8px 0 8px 10px;margin:8px 0}.draftSet{display:grid;grid-template-columns:40px 1fr 1fr 1fr;gap:6px;align-items:center;margin:5px 0}.draftSet input{width:100%;min-width:0}.summaryGrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-top:10px}.metric{border:1px solid #e5e7eb;border-radius:10px;padding:10px}.metric b{display:block;font-size:18px}.good{color:#166534}.warn{color:#92400e}.tiny{font-size:12px}.reviewFlag{font-size:12px;color:#92400e;margin-top:4px}@media(min-width:650px){.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.summaryGrid{grid-template-columns:repeat(4,minmax(0,1fr))}}
 </style></head><body><div class="app">
-<div class="top"><div><h1>Coach Copilot</h1><div class="muted">V3.4.2 coaching workflow</div></div><div><span id="who" class="muted"></span> <button id="signout" class="hidden">Sign out</button></div></div>
+<div class="top"><div><h1>Coach Copilot</h1><div class="muted">V3.4.3 coaching workflow</div></div><div><span id="who" class="muted"></span> <button id="signout" class="hidden">Sign out</button></div></div>
 <div id="auth" class="card"><h2>Sign in</h2><label>Email<input id="email" type="email"></label><label>Password<input id="password" type="password"></label><button id="signin" class="primary">Sign in</button><div id="authmsg" class="muted"></div></div><div id="passwordSetup" class="card hidden"><h2>Finish account setup</h2><div class="muted">Choose the password you will use to sign in to Coach Copilot.</div><label>New password<input id="newPassword" type="password" autocomplete="new-password" minlength="8"></label><label>Confirm password<input id="confirmPassword" type="password" autocomplete="new-password" minlength="8"></label><button id="savePassword" class="primary">Save password</button><div id="passwordSetupStatus" class="muted"></div></div>
 <div id="main" class="hidden"><div id="tabs" class="tabs card"><button class="tab active" data-v="clients">Clients</button><button class="tab" data-v="programme">Programme</button><button class="tab" data-v="workout">Workout</button><button class="tab" data-v="history">History</button></div>
 <section id="clients" class="view activeView"><div class="card">
@@ -173,7 +173,60 @@ function isHistoryPR(h,set){let when=new Date(h.completed_at),older=history.filt
 $('programmeSelect').onchange=()=>{sel.p=$('programmeSelect').value;sel.w=null;sel.s=null;normalizeSelection();renderAll()};$('weekSelect').onchange=()=>{sel.w=$('weekSelect').value;sel.s=null;normalizeSelection();renderAll()};$('sessionSelect').onchange=()=>{sel.s=$('sessionSelect').value;renderAll()};
 $('newProgramme').onclick=async()=>{let name=prompt('Programme name');if(!name)return;let goal=prompt('Goal','')||'';let r=await sb.from('programmes').insert({coach_id:profile.id,client_id:selectedClient.id,name,goal,status:'active'}).select('id').single();if(r.error)return err(r.error);let w=await sb.from('programme_weeks').insert({programme_id:r.data.id,week_number:1,name:'Week 1'}).select('id').single();if(w.error)return err(w.error);let s=await sb.from('sessions').insert({week_id:w.data.id,name:'Session 1',position:1});if(s.error)return err(s.error);sel.p=r.data.id;await loadTree(selectedClient.id)};
 $('newSession').onclick=async()=>{let {w}=cur();if(!w)return;let name=prompt('Session name');if(!name)return;let r=await sb.from('sessions').insert({week_id:w.id,name,position:w.sessions.length+1});if(r.error)return err(r.error);await loadTree(selectedClient.id)};$('renameProgramme').onclick=async()=>{let {p}=cur();if(!p)return;let name=prompt('Programme name',p.name);if(!name)return;let r=await sb.from('programmes').update({name}).eq('id',p.id);if(r.error)return err(r.error);await loadTree(selectedClient.id)};$('renameSession').onclick=async()=>{let {s}=cur();if(!s)return;let name=prompt('Session name',s.name);if(!name)return;let r=await sb.from('sessions').update({name}).eq('id',s.id);if(r.error)return err(r.error);await loadTree(selectedClient.id)};$('deleteSession').onclick=async()=>{let {s}=cur();if(!s||!confirm('Delete '+s.name+'?'))return;let r=await sb.from('sessions').delete().eq('id',s.id);if(r.error)return err(r.error);await loadTree(selectedClient.id)};
-$('createNextWeek').onclick=async()=>{let {p,w}=cur();if(!p||!w)return;let n=Math.max(...p.weeks.map(x=>x.week_number))+1,wr=await sb.from('programme_weeks').insert({programme_id:p.id,week_number:n,name:'Week '+n,notes:w.notes}).select('id').single();if(wr.error)return err(wr.error);for(const s of w.sessions){let sr=await sb.from('sessions').insert({week_id:wr.data.id,name:s.name,position:s.position,notes:s.notes}).select('id').single();if(sr.error)return err(sr.error);for(const e of s.exercises){let er=await sb.from('session_exercises').insert({session_id:sr.data.id,exercise_name:e.exercise_name,position:e.position,coach_notes:e.coach_notes}).select('id').single();if(er.error)return err(er.error);if(e.sets.length){let rows=e.sets.map(st=>({session_exercise_id:er.data.id,set_number:st.set_number,target_load_kg:st.target_load_kg,target_reps:st.target_reps,target_rir:st.target_rir,notes:st.notes})),rr=await sb.from('prescribed_sets').insert(rows);if(rr.error)return err(rr.error)}}}sel.w=wr.data.id;sel.s=null;await loadTree(selectedClient.id)};
+async function rollbackWeekCopy(created,deleteWeek){
+  const problems=[];
+  if(created.sets.length){let r=await sb.from('prescribed_sets').delete().in('id',created.sets);if(r.error)problems.push(r.error.message)}
+  if(created.exercises.length){let r=await sb.from('session_exercises').delete().in('id',created.exercises);if(r.error)problems.push(r.error.message)}
+  if(created.sessions.length){let r=await sb.from('sessions').delete().in('id',created.sessions);if(r.error)problems.push(r.error.message)}
+  if(deleteWeek&&created.weekId){let r=await sb.from('programme_weeks').delete().eq('id',created.weekId);if(r.error)problems.push(r.error.message)}
+  return problems;
+}
+$('createNextWeek').onclick=async()=>{
+  let {p,w}=cur();if(!p||!w)return;
+  if(!w.sessions.length){alert('The selected week has no sessions to copy.');return}
+  const btn=$('createNextWeek'),oldText=btn.textContent;btn.disabled=true;btn.textContent='Creating week…';
+  const created={weekId:null,sessions:[],exercises:[],sets:[]};let createdWeek=false;
+  try{
+    // V3.4.3: next week is based on the selected source week and checked against Supabase, not stale browser state.
+    const n=Number(w.week_number)+1;
+    let existing=await sb.from('programme_weeks').select('id,week_number,name,notes').eq('programme_id',p.id).eq('week_number',n).maybeSingle();
+    if(existing.error)throw existing.error;
+    let weekId;
+    if(existing.data){
+      weekId=existing.data.id;
+      // Re-use an orphaned/empty week left by an earlier failed copy, but never overwrite a populated week.
+      let sessionsCheck=await sb.from('sessions').select('id').eq('week_id',weekId);
+      if(sessionsCheck.error)throw sessionsCheck.error;
+      if(sessionsCheck.data.length)throw new Error('Week '+n+' already exists and contains sessions. Select Week '+n+' if you want to create the following week.');
+    }else{
+      weekId=crypto.randomUUID();created.weekId=weekId;createdWeek=true;
+      let wr=await sb.from('programme_weeks').insert({id:weekId,programme_id:p.id,week_number:n,name:'Week '+n,notes:w.notes});
+      if(wr.error)throw wr.error;
+    }
+    for(const s of w.sessions){
+      const sessionId=crypto.randomUUID();
+      let sr=await sb.from('sessions').insert({id:sessionId,week_id:weekId,name:s.name,position:s.position,notes:s.notes});
+      if(sr.error)throw sr.error;created.sessions.push(sessionId);
+      for(const e of s.exercises){
+        const exerciseId=crypto.randomUUID();
+        let er=await sb.from('session_exercises').insert({id:exerciseId,session_id:sessionId,exercise_name:e.exercise_name,position:e.position,coach_notes:e.coach_notes});
+        if(er.error)throw er.error;created.exercises.push(exerciseId);
+        if(e.sets.length){
+          let rows=e.sets.map(st=>{let id=crypto.randomUUID();created.sets.push(id);return {id,session_exercise_id:exerciseId,set_number:st.set_number,target_load_kg:st.target_load_kg,target_reps:st.target_reps,target_rir:st.target_rir,notes:st.notes}});
+          let rr=await sb.from('prescribed_sets').insert(rows);if(rr.error)throw rr.error;
+        }
+      }
+    }
+    // If this was an old empty week, only update its label/notes after the copy has succeeded.
+    if(existing.data){let ur=await sb.from('programme_weeks').update({name:'Week '+n,notes:w.notes}).eq('id',weekId);if(ur.error)throw ur.error}
+    sel.w=weekId;sel.s=null;await loadTree(selectedClient.id);msg('Week '+n+' created and copied.');
+  }catch(e){
+    const rollbackProblems=await rollbackWeekCopy(created,createdWeek);
+    err(e);
+    if(rollbackProblems.length)msg('Week copy failed and cleanup was incomplete. Do not retry yet.');
+    else msg('Week copy failed. Any rows created by this attempt were rolled back.');
+  }finally{btn.disabled=false;btn.textContent=oldText}
+};
 $('addExercise').onclick=async()=>{let {s}=cur();if(!s)return;let name=prompt('Exercise name');if(!name)return;let er=await sb.from('session_exercises').insert({session_id:s.id,exercise_name:name,position:s.exercises.length+1}).select('id').single();if(er.error)return err(er.error);let rr=await sb.from('prescribed_sets').insert({session_exercise_id:er.data.id,set_number:1});if(rr.error)return err(rr.error);await loadTree(selectedClient.id)};
 function renderWorkout(){if(!selectedClient)return;let {p,w,s}=cur();fill('clientProgrammeSelect',tree,'name','id',p?.id);fill('clientWeekSelect',p?.weeks,'name','id',w?.id);fill('clientSessionSelect',w?.sessions,'name','id',s?.id);$('workoutFor').textContent=(p?p.name+' · ':'')+(w?w.name+' · ':'')+(s?s.name:'');$('startWorkout').classList.toggle('hidden',profile.role!=='client');if(!activeWorkout){$('workoutArea').innerHTML=s?.exercises.length?'<p>Ready to start <b>'+esc(s.name)+'</b>.</p>':'<p class="muted">No session selected.</p>';$('finishBox').classList.add('hidden');return}let box=$('workoutArea');box.innerHTML='';activeWorkout.exercises.forEach((e,ei)=>{let d=document.createElement('div');d.className='exercise';let prev=previousSummary(e.name);d.innerHTML='<div class="row spread"><h3>'+esc(e.name)+'</h3><button class="swapEx">Swap</button></div>'+(e.notes?'<div class="muted">'+esc(e.notes)+'</div>':'')+(prev?'<div class="muted"><b>Last:</b> '+esc(prev)+'</div>':'')+'<div class="setrow header"><span>Set</span><span>kg</span><span>Reps</span><span>RIR</span><span>✓</span></div>';e.sets.forEach((st,j)=>makeWorkoutSet(d,e,st,j));let tools=document.createElement('div');tools.className='row';tools.style.flexWrap='wrap';let complete=document.createElement('button');complete.textContent='Complete prescribed';complete.onclick=()=>{e.sets.forEach(st=>{if(st.kg===''||st.kg==null)st.kg=st.prescribedKg;if(st.reps==='')st.reps=st.targetReps;if(st.rir==='')st.rir=st.targetRir;st.done=true});renderWorkout()};tools.appendChild(complete);let add=document.createElement('button');add.textContent='+ Set';add.onclick=()=>{let x=e.sets[e.sets.length-1]||{};e.sets.push({prescribedId:null,kg:x.kg??'',prescribedKg:x.prescribedKg??'',reps:'',rir:'',targetReps:x.targetReps??'',targetRir:x.targetRir??'',done:false,substituted:!!e.originalName});renderWorkout()};tools.appendChild(add);d.appendChild(tools);d.querySelector('.swapEx').onclick=()=>{let n=prompt('Replacement exercise',e.name);if(n){e.originalName=e.originalName||e.name;e.name=n;e.sets.forEach(x=>x.substituted=true);renderWorkout()}};box.appendChild(d)});$('finishBox').classList.remove('hidden')}
 $('clientProgrammeSelect').onchange=()=>{sel.p=$('clientProgrammeSelect').value;sel.w=null;sel.s=null;normalizeSelection();renderAll()};$('clientWeekSelect').onchange=()=>{sel.w=$('clientWeekSelect').value;sel.s=null;normalizeSelection();renderAll()};$('clientSessionSelect').onchange=()=>{sel.s=$('clientSessionSelect').value;renderAll()};

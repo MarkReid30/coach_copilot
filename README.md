@@ -1,4 +1,4 @@
-# Coach Copilot V3.4.1 — coaching workflow
+# Coach Copilot V3.4.3 — coaching workflow
 
 V3.4.1 is a targeted patch to V3.4, which was built from the known-good V3.3.5 baseline. The V3.3.5 onboarding, authentication, client activation, programme delivery, workout completion and history sync flow is retained.
 
@@ -57,3 +57,14 @@ Rep ranges currently use the lower number as the structured rep target and prese
 
 ## V3.4.2 onboarding fix
 Client onboarding now checks the authenticated client's own coach_clients relationship status. If it is still `invited`, the app forces Finish account setup even when Supabase delivers the email link as a normal SIGNED_IN session rather than PASSWORD_RECOVERY. Run `supabase/v3.4.2-onboarding-status.sql` once in Supabase before deploying this build.
+
+
+## V3.4.3 Create Next Week fix
+
+- `Create Next Week` now derives the target from the selected source week and checks Supabase before writing.
+- Existing empty/orphaned next weeks from failed copies are re-used instead of creating duplicates. This allows the empty Week 2 / Week 3 state from the pilot test to be repaired progressively.
+- A populated next week is never overwritten.
+- Week, session and exercise IDs are generated locally; the copy path no longer uses `insert(...).select(...).single()` on newly created rows.
+- The button is disabled while a copy is running to prevent double submission.
+- Failed copies perform best-effort child-to-parent rollback; a newly-created week is removed if its copy fails, while a pre-existing empty week is left intact.
+- No new Supabase SQL, RLS or Edge Function changes are required for V3.4.3 beyond the V3.4.2 onboarding-status RPC already installed.
