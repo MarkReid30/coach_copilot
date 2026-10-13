@@ -19,4 +19,6 @@ jobs:
         with:
           node-version: '22'
       - name: Isolated tests (no Supabase credentials)
-        run: node tests/reliability.test.cjs
+        run: |
+          node tests/reliability.test.cjs
+          node tests/offline.test.cjs
