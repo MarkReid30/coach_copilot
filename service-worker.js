@@ -1,6 +1,6 @@
 const CACHE='coach-copilot-v3.4.4-rc4';
 const LIB='https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2';
-const ASSETS=['./','./index.html','./manifest.webmanifest'];
+const ASSETS=['./','./index.html','./manifest.webmanifest','./icons/icon.svg'];
 self.addEventListener('install',e=>e.waitUntil((async()=>{
   const cache=await caches.open(CACHE);
   await cache.addAll(ASSETS);
