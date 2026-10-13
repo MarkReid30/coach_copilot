@@ -49,7 +49,7 @@ const fakeSupabase=String.raw`
     then(resolve,reject){
      let rows=(data[table]||[]).filter(x=>filters.every(f=>f(x))).map(x=>({...x}));
      if(sort)rows.sort((a,b)=>sort[1]?String(a[sort[0]]).localeCompare(String(b[sort[0]])):String(b[sort[0]]).localeCompare(String(a[sort[0]])));
-     return Promise.resolve({data:rows,error:null}).then(resolve,reject);
+     return Promise.resolve(navigator.onLine?{data:rows,error:null}:{data:null,error:{message:'Offline'}}).then(resolve,reject);
     }
    };return q;
   }
@@ -66,6 +66,7 @@ test('mobile exercise navigation and offline queue, reconnect, replay',async({pa
   await page.goto('http://127.0.0.1:4173/');
   await expect(page.locator('#startWorkout')).toBeVisible();
   await page.evaluate(()=>navigator.serviceWorker.ready);
+  await page.evaluate(async(source)=>{const cache=await caches.open('coach-copilot-v3.4.4-rc4');await cache.put('https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2',new Response(source,{headers:{'content-type':'application/javascript'}}))},fakeSupabase);
   await page.locator('#startWorkout').click();
   await expect(page.locator('.exerciseNav button')).toHaveCount(2);
   await page.locator('.setrow input.kg').fill('72.5');
@@ -84,7 +85,6 @@ test('mobile exercise navigation and offline queue, reconnect, replay',async({pa
   await expect(page.locator('#retrySync')).toBeVisible();
   await context.setOffline(false);
   await expect(page.locator('#historySyncStatus')).toContainText('Synced with coach');
-  await page.evaluate(async()=>{await window.__testBackend?.submissions?.size});
   const submitted=await page.evaluate(()=>window.__testBackend.submissions.size);
   expect(submitted).toBe(1);
   const rows=await page.evaluate(()=>window.__testBackend.data.completed_sets);
