@@ -44,8 +44,8 @@ const fakeSupabase=String.raw`
     eq:(k,v)=>{filters.push(x=>x[k]===v);return q},
     in:(k,v)=>{filters.push(x=>v.includes(x[k]));return q},
     order:(k,opt)=>{sort=[k,opt?.ascending!==false];return q},
-    maybeSingle:async()=>{const r=await q;return {data:r.data[0]||null,error:null}},
-    single:async()=>{const r=await q;return {data:r.data[0]||null,error:r.data.length?null:{message:'not found'}}},
+    maybeSingle:async()=>{const r=await q;return {data:r.data?.[0]||null,error:r.error}},
+    single:async()=>{const r=await q;return {data:r.data?.[0]||null,error:r.error||(r.data?.length?null:{message:'not found'})}}},
     then(resolve,reject){
      let rows=(data[table]||[]).filter(x=>filters.every(f=>f(x))).map(x=>({...x}));
      if(sort)rows.sort((a,b)=>sort[1]?String(a[sort[0]]).localeCompare(String(b[sort[0]])):String(b[sort[0]]).localeCompare(String(a[sort[0]])));
