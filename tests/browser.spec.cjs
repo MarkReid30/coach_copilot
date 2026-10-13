@@ -62,6 +62,8 @@ test.beforeEach(async({page})=>{
   await page.route('https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2',r=>r.fulfill({status:200,contentType:'application/javascript',body:fakeSupabase}));
 });
 test('mobile exercise navigation and offline queue, reconnect, replay',async({page,context})=>{
+  page.on('pageerror',e=>console.log('PAGEERROR',e.message));
+  page.on('console',e=>{if(e.type()==='error')console.log('BROWSER',e.text())});
   await page.setViewportSize({width:390,height:844});
   await page.goto('http://127.0.0.1:4173/');
   await expect(page.locator('#startWorkout')).toBeVisible();
@@ -78,6 +80,7 @@ test('mobile exercise navigation and offline queue, reconnect, replay',async({pa
   await expect(page.locator('#workoutArea .setrow input.reps')).toHaveValue('6');
   await context.setOffline(true);
   await page.reload();
+  console.log('OFFLINE DIAGNOSTICS',JSON.stringify(await page.evaluate(async()=>({title:document.title,auth:document.querySelector('#auth')?.className,main:document.querySelector('#main')?.className,msg:document.querySelector('#msg')?.textContent,workout:document.querySelector('#workoutArea')?.innerText,supabase:typeof window.supabase,caches:await caches.keys()}))));
   await expect(page.locator('#workoutArea .exercise h3')).toContainText('Bench');
   await expect(page.locator('#workoutArea .setrow input.kg')).toHaveValue('72.5');
   await page.locator('#finishWorkout').click();
