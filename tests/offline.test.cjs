@@ -8,6 +8,13 @@ const code=js.slice(js.indexOf('function syncMessage('),js.indexOf('function ren
   '\n'+js.slice(js.indexOf('function workoutSubmission('),js.indexOf('function prescribedNameForSet('));
 assert.ok(code.includes('async function flushPendingWorkouts()'));
 assert.ok(code.includes("$('finishWorkout').onclick"));
+const signout=js.slice(js.indexOf("$('signout').onclick="),js.indexOf("let recoveryMode="));
+assert.match(signout,/deviceAll\(pendingStore\)/,'signout must inspect unsynced workouts');
+assert.match(signout,/if\(pending\.length\)/,'signout must block with unsynced workouts');
+assert.match(signout,/deviceDelete\(draftStore,uid\)/,'signout must clear private drafts');
+assert.match(signout,/deviceDelete\(snapshotStore,uid\)/,'signout must clear cached programme');
+assert.ok(signout.indexOf('deviceDelete(snapshotStore,uid)')<signout.indexOf('sb.auth.signOut()'),'clear cache before signing out');
+console.log('PASS: signout preserves unsynced workouts and clears private caches');
 const stores={drafts:new Map(),pending:new Map(),snapshots:new Map()};
 const status={workoutSaveStatus:{textContent:''},historySyncStatus:{textContent:''},retrySync:{classList:{toggle(){}}},finishWorkout:{disabled:false}};
 const profile={id:'client-1',role:'client',display_name:'Fixture client'};
