@@ -28,7 +28,21 @@ Bench: 3 min rest, pause first rep"></textarea></label><div class="quickHelp mut
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script>
 (()=>{'use strict';const $=id=>document.getElementById(id), URL='https://ysalexpeiynndagqufpl.supabase.co', KEY='sb_publishable_hzOjhsD7DYoQy2g9Jg1ufA_T8MBs9im', sb=window.supabase.createClient(URL,KEY);let profile=null,clients=[],selectedClient=null,tree=[],sel={p:null,w:null,s:null},activeWorkout=null,history=[],quickDraft=null,openExercise=0;
 const esc=s=>{let d=document.createElement('div');d.textContent=s==null?'':String(s);return d.innerHTML}, num=v=>{let n=parseFloat(v);return isNaN(n)?null:n};function msg(t,b=false){$('msg').textContent=t||'';$('msg').className=b?'err':'muted'}function err(e){msg(e.message||String(e),true);console.error(e)}
-$('signin').onclick=async()=>{let r=await sb.auth.signInWithPassword({email:$('email').value,password:$('password').value});if(r.error)return err(r.error);boot(r.data.user)};$('signout').onclick=async()=>{await sb.auth.signOut();location.reload()};
+$('signin').onclick=async()=>{let r=await sb.auth.signInWithPassword({email:$('email').value,password:$('password').value});if(r.error)return err(r.error);boot(r.data.user)};$('signout').onclick=async()=>{
+  const uid=profile?.id;
+  try{
+    await deviceWrite;
+    const pending=uid?(await deviceAll(pendingStore)).filter(x=>x.client_id===uid):[];
+    if(pending.length){
+      alert('You have '+pending.length+' workout(s) saved only on this device. Reconnect and sync before signing out to avoid leaving unsent training data on this device.');
+      return;
+    }
+    // Prevent a different person using the same device from seeing cached programme or draft data.
+    if(uid){await deviceDelete(draftStore,uid);await deviceDelete(snapshotStore,uid);}
+    const r=await sb.auth.signOut();if(r.error)throw r.error;
+    location.reload();
+  }catch(e){err(e);alert('Sign out could not safely complete. Please try again while online.')}
+};
 let recoveryMode=sessionStorage.getItem('cc_password_setup')==='1';
 function showPasswordSetup(){recoveryMode=true;sessionStorage.setItem('cc_password_setup','1');$('auth').classList.add('hidden');$('main').classList.add('hidden');$('signout').classList.add('hidden');$('passwordSetup').classList.remove('hidden');setTimeout(()=>$('newPassword').focus(),0)}
 $('savePassword').onclick=async()=>{let a=$('newPassword').value,b=$('confirmPassword').value;if(a.length<8){$('passwordSetupStatus').textContent='Use at least 8 characters.';return}if(a!==b){$('passwordSetupStatus').textContent='Passwords do not match.';return}$('savePassword').disabled=true;$('passwordSetupStatus').textContent='Saving…';let r=await sb.auth.updateUser({password:a});if(r.error){$('savePassword').disabled=false;$('passwordSetupStatus').textContent='Could not save password: '+r.error.message;return}let g=await sb.auth.getUser();let u=g.data?.user;if(!u){$('savePassword').disabled=false;$('passwordSetupStatus').textContent='Password saved, but the client session could not be verified. Please sign in.';return}let pr=await sb.from('profiles').select('role').eq('id',u.id).single();if(pr.error||pr.data?.role!=='client'){$('savePassword').disabled=false;$('passwordSetupStatus').textContent='Password saved, but this account is not a client account.';return}let act=await sb.rpc('activate_my_client_relationship');if(act.error){$('savePassword').disabled=false;$('passwordSetupStatus').textContent='Password saved, but activation failed: '+act.error.message;return}if(act.data!==true){$('savePassword').disabled=false;$('passwordSetupStatus').textContent='Password saved, but no pending client relationship was activated. Ask your coach to check the account link.';return}$('passwordSetupStatus').textContent='Account setup complete. Opening Coach Copilot…';recoveryMode=false;sessionStorage.removeItem('cc_password_setup');$('passwordSetup').classList.add('hidden');await boot(u)};
