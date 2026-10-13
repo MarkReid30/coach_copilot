@@ -22,7 +22,7 @@ Incline DB press 3x8-10 @26kg
 Chest supported row 3x10 @70kg
 Lateral raise 3x12 @10kg
 
-Bench: 3 min rest, pause first rep"></textarea></label><div class="quickHelp muted">Understands common shorthand such as <b>4x5 @70kg</b>, <b>70kg 4x5</b>, <b>3x8-10 @26kg</b>, <b>2 RIR</b>, and notes. For multiple sessions, use <b>Session: Upper A</b> / <b>Session: Lower A</b>.</div><div class="row" style="flex-wrap:wrap;margin-top:10px"><button id="previewQuickBuild" class="primary">Build preview</button><button id="loadExample">Example</button><button id="clearQuickBuild">Clear</button></div><div id="quickBuildStatus" class="muted" style="margin-top:8px"></div><div id="quickBuildPreview" class="hidden"></div></div><div class="card"><div class="row spread"><div><h2>Programme Builder</h2><div id="progFor" class="muted"></div></div></div><div class="grid"><label>Programme<select id="programmeSelect"></select></label><label>Week<select id="weekSelect"></select></label><label>Session<select id="sessionSelect"></select></label></div><div id="coachProgButtons" class="row" style="flex-wrap:wrap;margin-bottom:10px"><button id="newProgramme">+ Programme</button><button id="createNextWeek" class="primary">Create Next Week</button><button id="newSession">+ Session</button><button id="renameProgramme">Rename programme</button><button id="renameSession">Rename session</button><button id="deleteSession" class="danger">Delete session</button></div><div class="row spread"><strong id="currentSessionTitle">Session</strong><button id="addExercise" class="primary">+ Exercise</button></div><div id="exercises"></div></div></section>
+Bench: 3 min rest, pause first rep"></textarea></label><div class="quickHelp muted">Understands common shorthand such as <b>4x5 @70kg</b>, <b>70kg 4x5</b>, <b>3x8-10 @26kg</b>, <b>2 RIR</b>, and notes. For multiple sessions, use <b>Session: Upper A</b> / <b>Session: Lower A</b>.</div><div class="row" style="flex-wrap:wrap;margin-top:10px"><button id="previewQuickBuild" class="primary">Build preview</button><button id="loadExample">Example</button><button id="clearQuickBuild">Clear</button></div><div id="quickBuildStatus" class="muted" style="margin-top:8px"></div><div id="quickBuildPreview" class="hidden"></div></div><div class="card"><div class="row spread"><div><h2>Programme Builder</h2><div id="progFor" class="muted"></div></div></div><div class="grid"><label>Programme<select id="programmeSelect"></select></label><label>Week<select id="weekSelect"></select></label><label>Session<select id="sessionSelect"></select></label></div><div id="coachProgButtons" class="row" style="flex-wrap:wrap;margin-bottom:10px"><button id="newProgramme">+ Programme</button><button id="createNextWeek" class="primary">Create Next Week</button><button id="copySession">Copy Session to Next Week</button><button id="newSession">+ Session</button><button id="renameProgramme">Rename programme</button><button id="renameSession">Rename session</button><button id="deleteSession" class="danger">Delete session</button></div><div class="row spread"><strong id="currentSessionTitle">Session</strong><button id="addExercise" class="primary">+ Exercise</button></div><div id="exercises"></div></div></section>
 <section id="workout" class="view"><div id="clientSummary" class="card hidden"></div><div class="card"><div class="row spread"><div><h2>Workout</h2><div id="workoutFor" class="muted"></div></div><button id="startWorkout" class="primary">Start Workout</button></div><div id="clientWorkoutChooser" class="grid"><label>Programme<select id="clientProgrammeSelect"></select></label><label>Week<select id="clientWeekSelect"></select></label><label>Session<select id="clientSessionSelect"></select></label></div><div id="prBanner" class="card hidden"><strong>New PR</strong><div id="prMessage" class="muted"></div></div><div id="workoutArea"><p class="muted">Select a session.</p></div><div id="finishBox" class="hidden"><label>Energy<select id="energy"><option>Low</option><option selected>Normal</option><option>High</option></select></label><label>Sleep last night<select id="sleep"><option value="<5">&lt;5 hours</option><option value="5-6">5–6 hours</option><option value="6-7" selected>6–7 hours</option><option value="7-8">7–8 hours</option><option value="8+">8+ hours</option></select></label><label>Sleep quality<select id="sleepQuality"><option>Poor</option><option selected>Normal</option><option>Good</option></select></label><label>Pain?<select id="pain"><option selected>No</option><option>Yes</option></select></label><div id="painDetails" class="hidden"><label>Where?<input id="painWhere"></label><label>Severity 0–10<input id="painSeverity" type="number" min="0" max="10"></label><label>Affected training?<select id="painEffect"><option>No</option><option>Slightly</option><option>Significantly</option></select></label></div><label>Notes<textarea id="notes"></textarea></label><button id="finishWorkout" class="primary">Finish session</button></div></div></section>
 <section id="history" class="view"><div class="card"><h2>History</h2><div id="historyFor" class="muted"></div><div id="adherenceSummary" class="card"></div><div id="historyList"></div></div></section><div id="msg" class="muted"></div></div></div>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script>
@@ -228,6 +228,53 @@ $('createNextWeek').onclick=async()=>{
     if(rollbackProblems.length)msg('Week copy failed and cleanup was incomplete. Do not retry yet.');
     else msg('Week copy failed. Any rows created by this attempt were rolled back.');
   }finally{btn.disabled=false;btn.textContent=oldText}
+};
+
+$('copySession').onclick=async()=>{
+  if(profile?.role!=='coach')return;
+  const {p,w,s}=cur();if(!p||!w||!s)return;
+  const btn=$('copySession');if(btn.disabled)return;btn.disabled=true;
+  const created={weekId:null,sessions:[],exercises:[],sets:[]};let newWeek=false;
+  try{
+    const targetNumber=Number(w.week_number)+1;
+    const sourceId=s.id,sourcePosition=Number(s.position);
+    if(!Number.isInteger(sourcePosition)||sourcePosition<1)throw Error('Invalid source slot');
+    const source=await sb.from('sessions').select('id,name,notes,position').eq('id',sourceId).eq('week_id',w.id).single();
+    if(source.error)throw source.error;
+    const week=await sb.from('programme_weeks').select('id').eq('programme_id',p.id).eq('week_number',targetNumber).maybeSingle();
+    if(week.error)throw week.error;
+    let weekId=week.data?.id;
+    if(weekId){
+      const existing=await sb.from('sessions').select('id,name,position').eq('week_id',weekId);
+      if(existing.error)throw existing.error;
+      if(existing.data.some(x=>Number(x.position)===sourcePosition))throw Error('Week '+targetNumber+', session slot '+sourcePosition+' is occupied. No changes made.');
+    }else{
+      weekId=crypto.randomUUID();created.weekId=weekId;newWeek=true;
+      const wr=await sb.from('programme_weeks').insert({id:weekId,programme_id:p.id,week_number:targetNumber,name:'Week '+targetNumber});
+      if(wr.error)throw wr.error;
+    }
+    const sourceExercises=await sb.from('session_exercises').select('id,exercise_name,position,coach_notes').eq('session_id',sourceId).order('position');
+    if(sourceExercises.error)throw sourceExercises.error;
+    const sessionId=crypto.randomUUID();
+    const sr=await sb.from('sessions').insert({id:sessionId,week_id:weekId,name:source.data.name,notes:source.data.notes,position:sourcePosition});
+    if(sr.error)throw sr.error;created.sessions.push(sessionId);
+    for(const ex of sourceExercises.data){
+      const exerciseId=crypto.randomUUID();
+      const er=await sb.from('session_exercises').insert({id:exerciseId,session_id:sessionId,exercise_name:ex.exercise_name,position:ex.position,coach_notes:ex.coach_notes});
+      if(er.error)throw er.error;created.exercises.push(exerciseId);
+      const sets=await sb.from('prescribed_sets').select('set_number,target_load_kg,target_reps,target_rir,notes').eq('session_exercise_id',ex.id).order('set_number');
+      if(sets.error)throw sets.error;
+      if(sets.data.length){
+        const rows=sets.data.map(st=>{const id=crypto.randomUUID();created.sets.push(id);return {...st,id,session_exercise_id:exerciseId}});
+        const ss=await sb.from('prescribed_sets').insert(rows);if(ss.error)throw ss.error;
+      }
+    }
+    sel.w=weekId;sel.s=sessionId;
+    await loadTree(selectedClient.id);msg('Copied '+source.data.name+' into Week '+targetNumber+', session '+sourcePosition+'. Other sessions were not changed.');
+  }catch(e){
+    const problems=await rollbackWeekCopy(created,newWeek);
+    err(e);if(problems.length)msg('Copy failed and cleanup was incomplete. Do not retry: '+problems.join('; '),true);
+  }finally{btn.disabled=false}
 };
 $('addExercise').onclick=async()=>{let {s}=cur();if(!s)return;let name=prompt('Exercise name');if(!name)return;let er=await sb.from('session_exercises').insert({session_id:s.id,exercise_name:name,position:s.exercises.length+1}).select('id').single();if(er.error)return err(er.error);let rr=await sb.from('prescribed_sets').insert({session_exercise_id:er.data.id,set_number:1});if(rr.error)return err(rr.error);await loadTree(selectedClient.id)};
 function renderWorkout(){if(!selectedClient)return;let {p,w,s}=cur();fill('clientProgrammeSelect',tree,'name','id',p?.id);fill('clientWeekSelect',p?.weeks,'name','id',w?.id);fill('clientSessionSelect',w?.sessions,'name','id',s?.id);$('workoutFor').textContent=(p?p.name+' · ':'')+(w?w.name+' · ':'')+(s?s.name:'');$('startWorkout').classList.toggle('hidden',profile.role!=='client');if(!activeWorkout){$('workoutArea').innerHTML=s?.exercises.length?'<p>Ready to start <b>'+esc(s.name)+'</b>.</p>':'<p class="muted">No session selected.</p>';$('finishBox').classList.add('hidden');return}let box=$('workoutArea');box.innerHTML='';activeWorkout.exercises.forEach((e,ei)=>{let d=document.createElement('div');d.className='exercise';let prev=previousSummary(e.name);d.innerHTML='<div class="row spread"><h3>'+esc(e.name)+'</h3><button class="swapEx">Swap</button></div>'+(e.notes?'<div class="muted">'+esc(e.notes)+'</div>':'')+(prev?'<div class="muted"><b>Last:</b> '+esc(prev)+'</div>':'')+'<div class="setrow header"><span>Set</span><span>kg</span><span>Reps</span><span>RIR</span><span>✓</span></div>';e.sets.forEach((st,j)=>makeWorkoutSet(d,e,st,j));let tools=document.createElement('div');tools.className='row';tools.style.flexWrap='wrap';let complete=document.createElement('button');complete.textContent='Complete prescribed';complete.onclick=()=>{e.sets.forEach(st=>{if(st.kg===''||st.kg==null)st.kg=st.prescribedKg;if(st.reps==='')st.reps=st.targetReps;if(st.rir==='')st.rir=st.targetRir;st.done=true});renderWorkout()};tools.appendChild(complete);let add=document.createElement('button');add.textContent='+ Set';add.onclick=()=>{let x=e.sets[e.sets.length-1]||{};e.sets.push({prescribedId:null,kg:x.kg??'',prescribedKg:x.prescribedKg??'',reps:'',rir:'',targetReps:x.targetReps??'',targetRir:x.targetRir??'',done:false,substituted:!!e.originalName});renderWorkout()};tools.appendChild(add);d.appendChild(tools);d.querySelector('.swapEx').onclick=()=>{let n=prompt('Replacement exercise',e.name);if(n){e.originalName=e.originalName||e.name;e.name=n;e.sets.forEach(x=>x.substituted=true);renderWorkout()}};box.appendChild(d)});$('finishBox').classList.remove('hidden')}
