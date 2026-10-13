@@ -1,8 +1,5 @@
 name: Coach Copilot reliability checks
 on:
-  push:
-    branches:
-      - fix/session-position-safety-v344
   pull_request:
     branches:
       - main
