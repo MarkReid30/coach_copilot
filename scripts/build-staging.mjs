@@ -16,7 +16,7 @@ html=html.replace('Coach Copilot V3.4.4-rc3','Coach Copilot V3.4.4 STAGING');
 html=html.replace('<body>','<body><div style="position:sticky;top:0;z-index:9999;background:#fef3c7;color:#78350f;text-align:center;padding:7px;font-weight:bold">STAGING · TEST DATA ONLY</div>');
 writeFileSync(join(out,'index.html'),html);
 let worker=readFileSync('service-worker.js','utf8');
-worker=worker.replace('coach-copilot-v3.4.4-rc3','coach-copilot-staging-v3.4.4-rc3');
+worker=worker.replace('coach-copilot-v3.4.4-rc4','coach-copilot-staging-v3.4.4-rc4');
 writeFileSync(join(out,'service-worker.js'),worker);
 cpSync('manifest.webmanifest',join(out,'manifest.webmanifest'));
 cpSync('icons',join(out,'icons'),{recursive:true});
