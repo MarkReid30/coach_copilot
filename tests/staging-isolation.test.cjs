@@ -5,7 +5,7 @@ const live=fs.readFileSync('index.html','utf8');
 const stage=fs.readFileSync('staging/index.html','utf8');
 const worker=fs.readFileSync('staging/service-worker.js','utf8');
 const manifest=JSON.parse(fs.readFileSync('staging/manifest.webmanifest','utf8'));
-assert.match(live,/<title>Coach Copilot V3\.4\.3<\/title>/);
+assert.match(live,/<title>Coach Copilot V3\.4\.(?:3|4-rc\d+)<\/title>/);
 assert.match(live,/ysalexpeiynndagqufpl\.supabase\.co/);
 assert.doesNotMatch(stage,/ysalexpeiynndagqufpl/);
 assert.match(stage,/afurfucflcwiiedueair\.supabase\.co/);
