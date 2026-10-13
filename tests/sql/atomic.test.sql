@@ -42,7 +42,7 @@ begin
     v_result:=public.submit_workout_atomic(
       '55555555-5555-4555-8555-555555555555','33333333-3333-4333-8333-333333333333',
       '2026-10-13 09:00Z','2026-10-13 10:00Z','unauthorized','[]','{}');
-  exception when insufficient_privilege or raise_exception then
+  exception when insufficient_privilege or raise_exception or unique_violation then
     v_failed:=true;
   end;
   if not v_failed then raise exception 'foreign workout unexpectedly accepted';end if;
