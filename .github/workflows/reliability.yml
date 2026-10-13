@@ -22,6 +22,14 @@ jobs:
         run: |
           node tests/reliability.test.cjs
           node tests/offline.test.cjs
+      - name: Verify staging build never targets production
+        env:
+          STAGING_SUPABASE_URL: https://fixture-only.supabase.co
+          STAGING_SUPABASE_PUBLISHABLE_KEY: sb_publishable_fixture_only
+        run: |
+          node scripts/build-staging.mjs
+          grep -q 'fixture-only.supabase.co' dist-staging/index.html
+          ! grep -q 'ysalexpeiynndagqufpl.supabase.co' dist-staging/index.html
 
   browser:
     runs-on: ubuntu-latest
