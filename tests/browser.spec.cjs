@@ -1,6 +1,6 @@
 const {test,expect}=require('@playwright/test');
 const user='11111111-1111-4111-8111-111111111111';
-const fakeSupabase=String.raw\`
+const fakeSupabase=String.raw`
 (()=>{
  const user={id:'11111111-1111-4111-8111-111111111111',email:'fixture@example.invalid'};
  const data={
@@ -57,7 +57,7 @@ const fakeSupabase=String.raw\`
  window.supabase={createClient:()=>api};
  window.__testBackend={submissions,data};
 })();
-\`;
+`;
 test.beforeEach(async({page})=>{
   await page.route('https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2',r=>r.fulfill({status:200,contentType:'application/javascript',body:fakeSupabase}));
 });
@@ -90,5 +90,5 @@ test('mobile exercise navigation and offline queue, reconnect, replay',async({pa
   const rows=await page.evaluate(()=>window.__testBackend.data.completed_sets);
   expect(rows).toHaveLength(2);
   expect(rows[0].load_kg).toBe(72.5);
-  await page.locator('#retrySync').evaluate(el=>expect(el.classList.contains('hidden')).toBe(true));
+  await expect(page.locator('#retrySync')).toBeHidden();
 });
