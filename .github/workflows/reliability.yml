@@ -18,6 +18,7 @@ jobs:
       - name: Isolated tests (no Supabase credentials)
         run: |
           node tests/reliability.test.cjs
+          node tests/staging-isolation.test.cjs
           node tests/offline.test.cjs
       - name: Verify staging build never targets production
         env:
