@@ -1,0 +1,23 @@
+// Produce a separate static staging build. No production backend fallback.
+import {readFileSync,writeFileSync,mkdirSync,cpSync} from 'node:fs';
+import {join} from 'node:path';
+const prod='https://ysalexpeiynndagqufpl.supabase.co';
+const url=process.env.STAGING_SUPABASE_URL;
+const key=process.env.STAGING_SUPABASE_PUBLISHABLE_KEY;
+if(!url||!key)throw Error('Set STAGING_SUPABASE_URL and STAGING_SUPABASE_PUBLISHABLE_KEY');
+if(!/^https:\/\/[a-z0-9-]+\.supabase\.co$/.test(url)||url===prod)throw Error('Staging URL must be a different Supabase project');
+if(!/^sb_publishable_/.test(key))throw Error('Only a Supabase publishable key is permitted');
+const out='dist-staging';mkdirSync(out,{recursive:true});
+let html=readFileSync('index.html','utf8');
+const source=html.match(/URL='([^']+)', KEY='([^']+)'/);
+if(!source||source[1]!==prod)throw Error('Unexpected source config: aborting');
+html=html.replace(source[0],"URL='"+url+"', KEY='"+key+"'");
+html=html.replace('Coach Copilot V3.4.4-rc3','Coach Copilot V3.4.4 STAGING');
+html=html.replace('<body>','<body><div style="position:sticky;top:0;z-index:9999;background:#fef3c7;color:#78350f;text-align:center;padding:7px;font-weight:bold">STAGING · TEST DATA ONLY</div>');
+writeFileSync(join(out,'index.html'),html);
+let worker=readFileSync('service-worker.js','utf8');
+worker=worker.replace('coach-copilot-v3.4.4-rc4','coach-copilot-staging-v3.4.4-rc4');
+writeFileSync(join(out,'service-worker.js'),worker);
+cpSync('manifest.webmanifest',join(out,'manifest.webmanifest'));
+cpSync('icons',join(out,'icons'),{recursive:true});
+console.log('Built isolated staging assets at '+out);

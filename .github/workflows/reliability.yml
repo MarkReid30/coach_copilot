@@ -1,0 +1,80 @@
+name: Coach Copilot reliability checks
+on:
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  reliability:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Isolated tests (no Supabase credentials)
+        run: |
+          node tests/reliability.test.cjs
+          node tests/staging-isolation.test.cjs
+          node tests/offline.test.cjs
+      - name: Verify staging build never targets production
+        env:
+          STAGING_SUPABASE_URL: https://fixture-only.supabase.co
+          STAGING_SUPABASE_PUBLISHABLE_KEY: sb_publishable_fixture_only
+        run: |
+          node scripts/build-staging.mjs
+          grep -q 'fixture-only.supabase.co' dist-staging/index.html
+          ! grep -q 'ysalexpeiynndagqufpl.supabase.co' dist-staging/index.html
+
+  browser:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install Playwright Chromium
+        run: |
+          npm install --no-save @playwright/test@1.58.2
+          npx playwright install --with-deps chromium
+      - name: Mobile browser and offline recovery
+        run: |
+          python3 -m http.server 4173 --bind 127.0.0.1 > /tmp/coach-copilot-server.log 2>&1 &
+          npx playwright test tests/browser.spec.cjs --browser chromium --workers 1 --reporter=line
+      - name: Upload browser failure traces
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: browser-test-results
+          path: test-results/
+          retention-days: 3
+
+  postgres:
+    runs-on: ubuntu-latest
+    timeout-minutes: 7
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: coach_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d coach_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      PGPASSWORD: postgres
+    steps:
+      - uses: actions/checkout@v4
+      - name: Create disposable schema and execute atomic RPC tests
+        run: |
+          psql -v ON_ERROR_STOP=1 -h localhost -U postgres -d coach_test -f tests/sql/fixture.sql
+          psql -v ON_ERROR_STOP=1 -h localhost -U postgres -d coach_test -f supabase/migrations/20261013_submit_workout_atomic.sql
+          psql -v ON_ERROR_STOP=1 -h localhost -U postgres -d coach_test -f tests/sql/atomic.test.sql
