@@ -15,6 +15,14 @@ assert.match(signout,/deviceDelete\(draftStore,uid\)/,'signout must clear privat
 assert.match(signout,/deviceDelete\(snapshotStore,uid\)/,'signout must clear cached programme');
 assert.ok(signout.indexOf('deviceDelete(snapshotStore,uid)')<signout.indexOf('sb.auth.signOut()'),'clear cache before signing out');
 console.log('PASS: signout preserves unsynced workouts and clears private caches');
+// Regression: overlapping network history loads must publish atomically, never duplicate.
+// The previous implementation reset global history, then appended to it across awaits.
+const historyFn=js.slice(js.indexOf('let historyLoadSequence=0;'),js.indexOf('function previousSummary('));
+assert.match(historyFn,/const nextHistory=\[\],seen=new Set\(\)/);
+assert.match(historyFn,/request===historyLoadSequence&&selectedClient\?\.id===clientId/);
+assert.ok(!historyFn.includes('history.push('),'do not append across awaits to shared history');
+console.log('PASS: history refresh builds isolated, deduplicated results');
+
 const stores={drafts:new Map(),pending:new Map(),snapshots:new Map()};
 const status={workoutSaveStatus:{textContent:''},historySyncStatus:{textContent:''},retrySync:{classList:{toggle(){}}},finishWorkout:{disabled:false}};
 const profile={id:'client-1',role:'client',display_name:'Fixture client'};
